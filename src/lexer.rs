@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(PartialEq, Debug)]
 pub enum Token<'a> {
     OpenParenthesis,
     Separator,

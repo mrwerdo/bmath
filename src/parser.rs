@@ -1,6 +1,6 @@
 use super::lexer::Token;
 
-#[derive(Debug)]
+#[derive(PartialEq, Debug)]
 pub enum Kind {
     Literals,
     Parenthesis,
@@ -16,52 +16,46 @@ pub struct Grouped<'a> {
 
 pub fn grouped<'a>(tokens: &'a [Token<'a>]) -> Result<Vec<Grouped<'a>>, &str> {
     let mut expressions: Vec<Grouped> = Vec::new();
-    let mut iterator = tokens.iter().enumerate();
     let mut parenthesis_depth = 0;
-    loop {
-        match iterator.next() {
-            None => break,
-            Some((index, element)) => {
-                match element {
-                    Token::OpenParenthesis => {
-                        if parenthesis_depth == 0 {
-                            expressions.push(Grouped { start_index: index, tokens: &tokens[index..(index+1)], kind: Kind::Parenthesis })
-                        } else {
-                            append_to_existing_token(&mut expressions, index, tokens);
-                        }
-                        parenthesis_depth += 1;
-                    },
-                    Token::Separator => {
-                        if parenthesis_depth == 1 {
-                            let last = expressions.last_mut().unwrap();
-                            last.kind = Kind::Tuple;
-                        }
-                    },
-                    Token::CloseParenthesis => {
-                        if parenthesis_depth == 0 {
-                            return Result::Err("unbalanced parenthesis");
-                        } else {
-                            parenthesis_depth -= 1;
-                            append_to_existing_token(&mut expressions, index, tokens);
-                        }
-                    },
-                    _ => {
-                        if parenthesis_depth > 0 {
-                            append_to_existing_token(&mut expressions, index, tokens);
-                        } else {
-                            let last = expressions.last();
-                            match last {
-                                None => expressions.push(Grouped { start_index: index, tokens: &tokens[index..(index+1)], kind: Kind::Literals }),
-                                Some(value) => {
-                                    match value.kind {
-                                        Kind::Parenthesis => expressions.push(Grouped { start_index: index, tokens: &tokens[index..(index+1)], kind: Kind::Literals }),
-                                        Kind::Literals => {
-                                            append_to_existing_token(&mut expressions, index, tokens);
-                                        },
-                                        Kind::Tuple => {
-                                            panic!("unreachable code");
-                                        }
-                                    }
+    for (index, element) in tokens.iter().enumerate() {
+        match element {
+            Token::OpenParenthesis => {
+                if parenthesis_depth == 0 {
+                    expressions.push(Grouped { start_index: index, tokens: &tokens[index..(index+1)], kind: Kind::Parenthesis })
+                } else {
+                    append_to_existing_token(&mut expressions, index, tokens);
+                }
+                parenthesis_depth += 1;
+            },
+            Token::Separator => {
+                if parenthesis_depth == 1 {
+                    let last = expressions.last_mut().unwrap();
+                    last.kind = Kind::Tuple;
+                }
+            },
+            Token::CloseParenthesis => {
+                if parenthesis_depth == 0 {
+                    return Result::Err("unbalanced parenthesis");
+                } else {
+                    parenthesis_depth -= 1;
+                    append_to_existing_token(&mut expressions, index, tokens);
+                }
+            },
+            _ => {
+                if parenthesis_depth > 0 {
+                    append_to_existing_token(&mut expressions, index, tokens);
+                } else {
+                    let last = expressions.last();
+                    match last {
+                        None => expressions.push(Grouped { start_index: index, tokens: &tokens[index..(index+1)], kind: Kind::Literals }),
+                        Some(value) => {
+                            match value.kind {
+                                Kind::Parenthesis => expressions.push(Grouped { start_index: index, tokens: &tokens[index..(index+1)], kind: Kind::Literals }),
+                                Kind::Literals => {
+                                    append_to_existing_token(&mut expressions, index, tokens);
+                                },
+                                Kind::Tuple => {
+                                    panic!("unreachable code");
                                 }
                             }
                         }
